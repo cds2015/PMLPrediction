@@ -1,0 +1,372 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"><html><head><META http-equiv="Content-Type" content="text/html; charset=utf-8"></head><body>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div>
+
+
+<div>
+
+
+
+
+<div>
+
+
+
+
+</div>
+
+
+<hr>
+<p>title: ���Practical machine learning Prediction Assignment���</p>
+<p>output: html_document</p>
+<hr>
+<p>Load Dataset</p>
+<pre><code>library(caret)</code></pre>
+<pre><code>## Loading required package: lattice</code></pre>
+<pre><code>## Loading required package: ggplot2</code></pre>
+<pre><code>library(rpart)
+
+library(rpart.plot)
+
+library(RColorBrewer)
+
+library(RGtk2)
+
+library(rattle)</code></pre>
+<pre><code>## Rattle: A free graphical interface for data science with R.
+## Version 5.3.0 Copyright (c) 2006-2018 Togaware Pty Ltd.
+## Type &#39;rattle()&#39; to shake, rattle, and roll your data.</code></pre>
+<pre><code>library(randomForest)</code></pre>
+<pre><code>## randomForest 4.6-14</code></pre>
+<pre><code>## Type rfNews() to see new features/changes/bug fixes.</code></pre>
+<pre><code>## 
+## Attaching package: &#39;randomForest&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:rattle&#39;:
+## 
+##     importance</code></pre>
+<pre><code>## The following object is masked from &#39;package:ggplot2&#39;:
+## 
+##     margin</code></pre>
+<pre><code>library(gbm)</code></pre>
+<pre><code>## Loaded gbm 2.1.5</code></pre>
+<pre><code>traindata &lt;- &quot;<a href="http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv" target="_blank">http://d396qusza40orc.<wbr>cloudfront.net/predmachlearn/<wbr>pml-training.csv</a>&quot;
+
+testdata  &lt;- &quot;<a href="http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv" target="_blank">http://d396qusza40orc.<wbr>cloudfront.net/predmachlearn/<wbr>pml-testing.csv</a>&quot;
+
+
+
+traindataholder &lt;- read.csv(url(traindata))
+testdataholder &lt;- read.csv(url(testdata))
+
+
+
+dim(traindataholder)</code></pre>
+<pre><code>## [1] 19622   160</code></pre>
+<pre><code>dim(testdataholder)</code></pre>
+<pre><code>## [1]  20 160</code></pre>
+<p>Data Cleaning</p>
+<pre><code>non_zero_var &lt;- nearZeroVar(traindataholder)
+
+preprocesstraindata &lt;- traindataholder[,-non_zero_<wbr>var]
+
+preprocesstestdata &lt;- testdataholder[,-non_zero_var]
+
+dim(preprocesstraindata)</code></pre>
+<pre><code>## [1] 19622   100</code></pre>
+<pre><code>dim(preprocesstestdata)</code></pre>
+<pre><code>## [1]  20 100</code></pre>
+<pre><code>na_val_col &lt;- sapply(preprocesstraindata, function(x) mean(<a href="http://is.na" target="_blank">is.na</a>(x))) &gt; 0.95
+
+preprocesstraindata &lt;- preprocesstraindata[,na_val_<wbr>col == FALSE]
+
+preprocesstestdata &lt;- preprocesstestdata[,na_val_col == FALSE]
+
+
+dim(preprocesstraindata)</code></pre>
+<pre><code>## [1] 19622    59</code></pre>
+<pre><code>dim(preprocesstestdata)</code></pre>
+<pre><code>## [1] 20 59</code></pre>
+<pre><code>preprocesstraindata &lt;- preprocesstraindata[,8:59]
+preprocesstestdata &lt;- preprocesstestdata[,8:59]
+
+
+
+dim(preprocesstraindata)</code></pre>
+<pre><code>## [1] 19622    52</code></pre>
+<pre><code>dim(preprocesstestdata)</code></pre>
+<pre><code>## [1] 20 52</code></pre>
+<pre><code>colnames(preprocesstraindata)</code></pre>
+<pre><code>##  [1] &quot;pitch_belt&quot;           &quot;yaw_belt&quot;             &quot;total_accel_belt&quot;    
+##  [4] &quot;gyros_belt_x&quot;         &quot;gyros_belt_y&quot;         &quot;gyros_belt_z&quot;        
+##  [7] &quot;accel_belt_x&quot;         &quot;accel_belt_y&quot;         &quot;accel_belt_z&quot;        
+## [10] &quot;magnet_belt_x&quot;        &quot;magnet_belt_y&quot;        &quot;magnet_belt_z&quot;       
+## [13] &quot;roll_arm&quot;             &quot;pitch_arm&quot;            &quot;yaw_arm&quot;             
+## [16] &quot;total_accel_arm&quot;      &quot;gyros_arm_x&quot;          &quot;gyros_arm_y&quot;         
+## [19] &quot;gyros_arm_z&quot;          &quot;accel_arm_x&quot;          &quot;accel_arm_y&quot;         
+## [22] &quot;accel_arm_z&quot;          &quot;magnet_arm_x&quot;         &quot;magnet_arm_y&quot;        
+## [25] &quot;magnet_arm_z&quot;         &quot;roll_dumbbell&quot;        &quot;pitch_dumbbell&quot;      
+## [28] &quot;yaw_dumbbell&quot;         &quot;total_accel_dumbbell&quot; &quot;gyros_dumbbell_x&quot;    
+## [31] &quot;gyros_dumbbell_y&quot;     &quot;gyros_dumbbell_z&quot;     &quot;accel_dumbbell_x&quot;    
+## [34] &quot;accel_dumbbell_y&quot;     &quot;accel_dumbbell_z&quot;     &quot;magnet_dumbbell_x&quot;   
+## [37] &quot;magnet_dumbbell_y&quot;    &quot;magnet_dumbbell_z&quot;    &quot;roll_forearm&quot;        
+## [40] &quot;pitch_forearm&quot;        &quot;yaw_forearm&quot;          &quot;total_accel_forearm&quot; 
+## [43] &quot;gyros_forearm_x&quot;      &quot;gyros_forearm_y&quot;      &quot;gyros_forearm_z&quot;     
+## [46] &quot;accel_forearm_x&quot;      &quot;accel_forearm_y&quot;      &quot;accel_forearm_z&quot;     
+## [49] &quot;magnet_forearm_x&quot;     &quot;magnet_forearm_y&quot;     &quot;magnet_forearm_z&quot;    
+## [52] &quot;classe&quot;</code></pre>
+<pre><code>colnames(preprocesstestdata)</code></pre>
+<pre><code>##  [1] &quot;pitch_belt&quot;           &quot;yaw_belt&quot;             &quot;total_accel_belt&quot;    
+##  [4] &quot;gyros_belt_x&quot;         &quot;gyros_belt_y&quot;         &quot;gyros_belt_z&quot;        
+##  [7] &quot;accel_belt_x&quot;         &quot;accel_belt_y&quot;         &quot;accel_belt_z&quot;        
+## [10] &quot;magnet_belt_x&quot;        &quot;magnet_belt_y&quot;        &quot;magnet_belt_z&quot;       
+## [13] &quot;roll_arm&quot;             &quot;pitch_arm&quot;            &quot;yaw_arm&quot;             
+## [16] &quot;total_accel_arm&quot;      &quot;gyros_arm_x&quot;          &quot;gyros_arm_y&quot;         
+## [19] &quot;gyros_arm_z&quot;          &quot;accel_arm_x&quot;          &quot;accel_arm_y&quot;         
+## [22] &quot;accel_arm_z&quot;          &quot;magnet_arm_x&quot;         &quot;magnet_arm_y&quot;        
+## [25] &quot;magnet_arm_z&quot;         &quot;roll_dumbbell&quot;        &quot;pitch_dumbbell&quot;      
+## [28] &quot;yaw_dumbbell&quot;         &quot;total_accel_dumbbell&quot; &quot;gyros_dumbbell_x&quot;    
+## [31] &quot;gyros_dumbbell_y&quot;     &quot;gyros_dumbbell_z&quot;     &quot;accel_dumbbell_x&quot;    
+## [34] &quot;accel_dumbbell_y&quot;     &quot;accel_dumbbell_z&quot;     &quot;magnet_dumbbell_x&quot;   
+## [37] &quot;magnet_dumbbell_y&quot;    &quot;magnet_dumbbell_z&quot;    &quot;roll_forearm&quot;        
+## [40] &quot;pitch_forearm&quot;        &quot;yaw_forearm&quot;          &quot;total_accel_forearm&quot; 
+## [43] &quot;gyros_forearm_x&quot;      &quot;gyros_forearm_y&quot;      &quot;gyros_forearm_z&quot;     
+## [46] &quot;accel_forearm_x&quot;      &quot;accel_forearm_y&quot;      &quot;accel_forearm_z&quot;     
+## [49] &quot;magnet_forearm_x&quot;     &quot;magnet_forearm_y&quot;     &quot;magnet_forearm_z&quot;    
+## [52] &quot;problem_id&quot;</code></pre>
+<p>Data Partitioning</p>
+<pre><code>Partitionratio &lt;- createDataPartition(<wbr>preprocesstraindata$classe, p=0.6, list=FALSE)
+
+trainFinalDataset &lt;- preprocesstraindata[<wbr>Partitionratio,]
+
+testFinalDataset &lt;- preprocesstraindata[-<wbr>Partitionratio,]
+
+dim(trainFinalDataset)</code></pre>
+<pre><code>## [1] 11776    52</code></pre>
+<pre><code>dim(testFinalDataset)</code></pre>
+<pre><code>## [1] 7846   52</code></pre>
+<p>Decision Tree</p>
+<pre><code>DecisionTreeModelFit &lt;- train(classe ~ ., data = trainFinalDataset, method=&quot;rpart&quot;)
+
+DecisionTreePrediction &lt;- predict(DecisionTreeModelFit, testFinalDataset)
+
+confusionMatrix(<wbr>DecisionTreePrediction, testFinalDataset$classe)</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 2022  634  622  575  341
+##          B   37  529   54  240  284
+##          C  131  305  569  195  365
+##          D   35   49  123  276   45
+##          E    7    1    0    0  407
+## 
+## Overall Statistics
+##                                           
+##                Accuracy : 0.4847          
+##                  95% CI : (0.4736, 0.4958)
+##     No Information Rate : 0.2845          
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
+##                                           
+##                   Kappa : 0.3257          
+##                                           
+##  Mcnemar&#39;s Test P-Value : &lt; 2.2e-16       
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.9059  0.34848  0.41594  0.21462  0.28225
+## Specificity            0.6131  0.90281  0.84625  0.96159  0.99875
+## Pos Pred Value         0.4821  0.46241  0.36358  0.52273  0.98072
+## Neg Pred Value         0.9425  0.85243  0.87279  0.86198  0.86072
+## Prevalence             0.2845  0.19347  0.17436  0.16391  0.18379
+## Detection Rate         0.2577  0.06742  0.07252  0.03518  0.05187
+## Detection Prevalence   0.5345  0.14581  0.19946  0.06730  0.05289
+## Balanced Accuracy      0.7595  0.62565  0.63109  0.58810  0.64050</code></pre>
+<pre><code>rpart.plot(<wbr>DecisionTreeModelFit$<wbr>finalModel, roundint=FALSE)</code></pre>
+<p><img width="672"> As we can see the DT model has 60% accuracy. Let���s try random forest model.</p>
+<p>Random Forest Model</p>
+<pre><code>RandomForestModelFit &lt;- train(classe ~ ., data = trainFinalDataset, method = &quot;rf&quot;, ntree = 5)
+
+RandomForestPrediction &lt;- predict(RandomForestModelFit, testFinalDataset)
+
+RandomForestConMatrix &lt;- confusionMatrix(<wbr>RandomForestPrediction, testFinalDataset$classe)
+
+RandomForestConMatrix</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 2209   33    3    2    4
+##          B   13 1457   29   11   13
+##          C    6   20 1316   23   11
+##          D    1    5   15 1248    6
+##          E    3    3    5    2 1408
+## 
+## Overall Statistics
+##                                           
+##                Accuracy : 0.9735          
+##                  95% CI : (0.9697, 0.9769)
+##     No Information Rate : 0.2845          
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
+##                                           
+##                   Kappa : 0.9665          
+##                                           
+##  Mcnemar&#39;s Test P-Value : 0.003407        
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.9897   0.9598   0.9620   0.9705   0.9764
+## Specificity            0.9925   0.9896   0.9907   0.9959   0.9980
+## Pos Pred Value         0.9813   0.9567   0.9564   0.9788   0.9909
+## Neg Pred Value         0.9959   0.9904   0.9920   0.9942   0.9947
+## Prevalence             0.2845   0.1935   0.1744   0.1639   0.1838
+## Detection Rate         0.2815   0.1857   0.1677   0.1591   0.1795
+## Detection Prevalence   0.2869   0.1941   0.1754   0.1625   0.1811
+## Balanced Accuracy      0.9911   0.9747   0.9764   0.9832   0.9872</code></pre>
+<pre><code>plot(RandomForestConMatrix$<wbr>table, col = RandomForestConMatrix$byClass, 
+
+     main = paste(&quot;Random Forest - Accuracy Level =&quot;,
+
+                  round(RandomForestConMatrix$<wbr>overall[&#39;Accuracy&#39;], 4)))</code></pre>
+<p><img width="672"> Random Forest Model gave us 97% accuracy. Let���s try Gradient Boosting Model.</p>
+<p>GBM</p>
+<pre><code>GradientBMFit &lt;- train(classe ~ ., data = trainFinalDataset, method = &quot;gbm&quot;, verbose = FALSE)
+
+GradientBMFit$finalModel</code></pre>
+<pre><code>## A gradient boosted model with multinomial loss function.
+## 150 iterations were performed.
+## There were 51 predictors of which 51 had non-zero influence.</code></pre>
+<pre><code>GBMPrediction &lt;- predict(GradientBMFit, testFinalDataset)
+
+
+GBMPredictionConf &lt;- confusionMatrix(GBMPrediction, testFinalDataset$classe)
+
+GBMPredictionConf</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 2194   64    0    1    2
+##          B   26 1417   59    7   12
+##          C    6   31 1294   48   13
+##          D    5    1   14 1219   10
+##          E    1    5    1   11 1405
+## 
+## Overall Statistics
+##                                          
+##                Accuracy : 0.9596         
+##                  95% CI : (0.955, 0.9638)
+##     No Information Rate : 0.2845         
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16      
+##                                          
+##                   Kappa : 0.9489         
+##                                          
+##  Mcnemar&#39;s Test P-Value : 4.21e-11       
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity            0.9830   0.9335   0.9459   0.9479   0.9743
+## Specificity            0.9881   0.9836   0.9849   0.9954   0.9972
+## Pos Pred Value         0.9704   0.9316   0.9296   0.9760   0.9874
+## Neg Pred Value         0.9932   0.9840   0.9885   0.9898   0.9942
+## Prevalence             0.2845   0.1935   0.1744   0.1639   0.1838
+## Detection Rate         0.2796   0.1806   0.1649   0.1554   0.1791
+## Detection Prevalence   0.2882   0.1939   0.1774   0.1592   0.1814
+## Balanced Accuracy      0.9855   0.9585   0.9654   0.9717   0.9858</code></pre>
+<pre><code>plot(GBMPredictionConf$table, col = GBMPredictionConf$byClass, 
+
+     main = paste(&quot;Gradient Boosting - Accuracy Level =&quot;,
+
+                  round(GBMPredictionConf$<wbr>overall[&#39;Accuracy&#39;], 4)))</code></pre>
+<p><img width="672"></p>
+<pre><code>RandomForestConMatrix$overall</code></pre>
+<pre><code>##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 
+##    0.973489676    0.966456626    0.969690572    0.976931291    0.284476166 
+## AccuracyPValue  McnemarPValue 
+##    0.000000000    0.003406885</code></pre>
+<pre><code>GBMPredictionConf$overall</code></pre>
+<pre><code>##       Accuracy          Kappa  AccuracyLower  AccuracyUpper   AccuracyNull 
+##   9.595972e-01   9.488674e-01   9.550026e-01   9.638463e-01   2.844762e-01 
+## AccuracyPValue  McnemarPValue 
+##   0.000000e+00   4.210146e-11</code></pre>
+<pre><code>Final_RandomForestPrediction &lt;- predict(RandomForestModelFit, preprocesstestdata )
+
+Final_RandomForestPrediction</code></pre>
+<pre><code>##  [1] B A B A A E D D A A B C B A E E A B B B
+## Levels: A B C D E</code></pre>
+<div>
+<h3>Conclusion</h3>
+<p>As we can see GBM has 95% accuracy hence we go for random forest model for prediction.</p>
+</div>
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+</div>
+
+</body></html>

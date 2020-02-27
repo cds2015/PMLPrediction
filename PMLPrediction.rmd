@@ -1,0 +1,198 @@
+---
+
+title: "Practical machine learning Prediction Assignment"
+
+output: html_document
+
+---
+
+
+
+Load Dataset
+
+
+
+```{r, chunk1}
+
+library(caret)
+
+library(rpart)
+
+library(rpart.plot)
+
+library(RColorBrewer)
+
+library(RGtk2)
+
+library(rattle)
+
+library(randomForest)
+
+library(gbm)
+
+
+traindata <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+
+testdata  <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+
+
+traindataholder <- read.csv(url(traindata))
+testdataholder <- read.csv(url(testdata))
+
+
+
+dim(traindataholder)
+dim(testdataholder)
+
+```
+
+Data Cleaning
+
+
+
+```{r, chunk2}
+
+non_zero_var <- nearZeroVar(traindataholder)
+
+preprocesstraindata <- traindataholder[,-non_zero_var]
+
+preprocesstestdata <- testdataholder[,-non_zero_var]
+
+dim(preprocesstraindata)
+dim(preprocesstestdata)
+
+na_val_col <- sapply(preprocesstraindata, function(x) mean(is.na(x))) > 0.95
+
+preprocesstraindata <- preprocesstraindata[,na_val_col == FALSE]
+
+preprocesstestdata <- preprocesstestdata[,na_val_col == FALSE]
+
+
+dim(preprocesstraindata)
+dim(preprocesstestdata)
+
+
+preprocesstraindata <- preprocesstraindata[,8:59]
+preprocesstestdata <- preprocesstestdata[,8:59]
+
+
+
+dim(preprocesstraindata)
+dim(preprocesstestdata)
+
+colnames(preprocesstraindata)
+colnames(preprocesstestdata)
+
+
+```
+
+
+Data Partitioning
+
+
+
+```{r, chunk3}
+
+
+
+Partitionratio <- createDataPartition(preprocesstraindata$classe, p=0.6, list=FALSE)
+
+trainFinalDataset <- preprocesstraindata[Partitionratio,]
+
+testFinalDataset <- preprocesstraindata[-Partitionratio,]
+
+dim(trainFinalDataset)
+
+dim(testFinalDataset)
+```
+
+
+Decision Tree
+
+
+
+```{r, chunk4}
+
+
+
+DecisionTreeModelFit <- train(classe ~ ., data = trainFinalDataset, method="rpart")
+
+DecisionTreePrediction <- predict(DecisionTreeModelFit, testFinalDataset)
+
+confusionMatrix(DecisionTreePrediction, testFinalDataset$classe)
+
+rpart.plot(DecisionTreeModelFit$finalModel, roundint=FALSE)
+```
+As we can see the DT model has 60% accuracy. Let's try random forest model.
+
+
+
+Random Forest Model
+
+
+
+```{r,chunk5}
+
+RandomForestModelFit <- train(classe ~ ., data = trainFinalDataset, method = "rf", ntree = 5)
+
+RandomForestPrediction <- predict(RandomForestModelFit, testFinalDataset)
+
+RandomForestConMatrix <- confusionMatrix(RandomForestPrediction, testFinalDataset$classe)
+
+RandomForestConMatrix
+
+plot(RandomForestConMatrix$table, col = RandomForestConMatrix$byClass, 
+
+     main = paste("Random Forest - Accuracy Level =",
+
+                  round(RandomForestConMatrix$overall['Accuracy'], 4)))
+
+```
+Random Forest Model gave us 97% accuracy. Let's try Gradient Boosting Model.
+
+
+
+GBM
+
+```{r,chunk6}
+
+
+
+GradientBMFit <- train(classe ~ ., data = trainFinalDataset, method = "gbm", verbose = FALSE)
+
+GradientBMFit$finalModel
+
+GBMPrediction <- predict(GradientBMFit, testFinalDataset)
+
+
+GBMPredictionConf <- confusionMatrix(GBMPrediction, testFinalDataset$classe)
+
+GBMPredictionConf
+
+
+
+plot(GBMPredictionConf$table, col = GBMPredictionConf$byClass, 
+
+     main = paste("Gradient Boosting - Accuracy Level =",
+
+                  round(GBMPredictionConf$overall['Accuracy'], 4)))
+
+
+
+RandomForestConMatrix$overall
+
+
+
+GBMPredictionConf$overall
+
+
+
+Final_RandomForestPrediction <- predict(RandomForestModelFit, preprocesstestdata )
+
+Final_RandomForestPrediction
+```
+
+### Conclusion
+
+As we can see GBM has 95% accuracy hence we go for random forest model for prediction.
